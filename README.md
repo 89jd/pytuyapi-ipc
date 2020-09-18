@@ -4,3 +4,7 @@ This repository was created due to current implementations of tuya protocol via 
 and it seems to be the only library that can communicate correctly.
 
 It uses tuyapi-ipc to communicate with tuyapi over file descriptors
+
+```bash
+pip install pytuyapi-ipc
+```
