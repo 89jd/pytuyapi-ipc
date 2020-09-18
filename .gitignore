@@ -3,3 +3,8 @@
 node_modules
 package*json
 .workspace*
+dist/
+build/
+*.egg-info
+*pyc
+__pycache__

@@ -10,6 +10,9 @@ from typing import Any, Dict, List
 from subprocess import Popen, PIPE
 import time
 
+def get_js_executable_path(location):
+    return f'{location}/node_modules/.bin/tuyapi-ipc'
+
 class TuyaNodeWrapper:
     def __init__(self, js_location = './', message_received_callback = None):
         self.js_location = js_location
@@ -50,7 +53,7 @@ class TuyaNodeWrapper:
 
         t.start()
 
-        Popen([self.js_location + '/node_modules/.bin/tuyapi-ipc', str(self.node_rc), str(self.py_wc)], \
+        Popen([get_js_executable_path(self.js_location), str(self.node_rc), str(self.py_wc)], \
             stdout=sys.stdout, stderr=sys.stderr, close_fds=False)    
 
     def _send_message_to_tuya(self, t: str, data: str = None):
@@ -81,9 +84,10 @@ def on_message_received(message):
         tuya.disconnect()
 
 def init(location):
-    Popen(['npm', 'install', 'tuyapi-ipc'], \
-            cwd=location ,stdout=sys.stdout, stderr=sys.stderr, close_fds=False) \
-            .wait()
+    if not os.path.exists(get_js_executable_path(location)):
+        Popen(['npm', 'install', 'tuyapi-ipc'], \
+                cwd=location ,stdout=sys.stdout, stderr=sys.stderr, close_fds=False) \
+                .wait()
 
 if __name__ == '__main__':
     init('./')
