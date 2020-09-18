@@ -1,0 +1,5 @@
+.venv
+.vscode
+node_modules
+package*json
+.workspace*
