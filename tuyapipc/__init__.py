@@ -56,8 +56,7 @@ class TuyaNodeWrapper:
         t = threading.Thread(target=asyncio.run, args=(self.read_loop(loop),))
 
         t.start()
-
-        Popen([get_js_executable_path(self.js_location), str(self.node_rc), str(self.py_wc)], \
+        Popen([get_js_executable_path(self.js_location), str('--fdr'), str(self.node_rc), str('--fdw'), str(self.py_wc)], \
             stdout=sys.stdout, stderr=sys.stderr, close_fds=False)    
 
     def _send_message_to_tuya(self, t: str, data: str = None):
@@ -89,10 +88,9 @@ def on_message_received(message):
         tuya.disconnect()
 
 def init(location):
-    if not os.path.exists(get_js_executable_path(location)):
-        Popen(['npm', 'install', 'tuyapi-ipc'], \
-                cwd=location ,stdout=sys.stdout, stderr=sys.stderr, close_fds=False) \
-                .wait()
+    Popen(['npm', 'install', 'tuyapi-ipc'], \
+            cwd=location ,stdout=sys.stdout, stderr=sys.stderr, close_fds=False) \
+            .wait()
 
 tuya = None
 
@@ -100,7 +98,7 @@ def main():
     init('./')
     try:
         global tuya
-        tuya = TuyaNodeWrapper(message_received_callback=on_message_received)
+        tuya = TuyaNodeWrapper(message_received_callback=on_message_received, debug=True)
         tuya.start()
         tuya.connect_device(sys.argv[1], sys.argv[2], sys.argv[3])
     except:
@@ -109,7 +107,6 @@ def main():
 async def async_main():
     main()
     
-
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.run_until_complete(async_main())
