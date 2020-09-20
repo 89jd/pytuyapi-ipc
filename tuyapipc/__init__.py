@@ -14,13 +14,15 @@ def get_js_executable_path(location):
     return f'{location}/node_modules/.bin/tuyapi-ipc'
 
 class TuyaNodeWrapper:
-    def __init__(self, js_location = './', message_received_callback = None):
+    def __init__(self, js_location = './', message_received_callback = None, debug = False):
         self.js_location = js_location
         self.node_rc, self.node_wc = os.pipe()
         self.py_rc, self.py_wc = os.pipe()
         self.wc_file = os.fdopen(self.node_wc, 'w')
         self.rc_file = os.fdopen(self.py_rc, 'r')
         self.message_received_callback = message_received_callback
+        self.debug = debug
+
         os.set_inheritable(self.node_rc, True)
         os.set_inheritable(self.py_wc, True)
 
@@ -31,14 +33,16 @@ class TuyaNodeWrapper:
                 future = loop.run_in_executor(None, self.rc_file.readline)
                 data = await future
                 self._on_message_received(data)
-        print('Completed')
+        if self.debug:
+            print('Completed')
 
-    def read_loop(self, loop): 
+    async def read_loop(self, loop): 
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.read())
+        await self.read()
 
     def _on_message_received(self, data):
-        print('Python receive: ', data)
+        if self.debug:
+            print('Python receive: ', data)
         ob = json.loads(data)
 
         if ob['type'] == 'disconnected': 
@@ -49,7 +53,7 @@ class TuyaNodeWrapper:
 
     def start(self):
         loop = asyncio.get_event_loop()
-        t = threading.Thread(target=self.read_loop, args=(loop,))
+        t = threading.Thread(target=asyncio.run, args=(self.read_loop(loop),))
 
         t.start()
 
@@ -63,7 +67,8 @@ class TuyaNodeWrapper:
         if data:
             message['data'] = data
 
-        print('Python send: ', message)
+        if self.debug:
+            print('Python send: ', message)
 
         self.wc_file.write(json.dumps(message))
         self.wc_file.write('\n')
@@ -89,11 +94,23 @@ def init(location):
                 cwd=location ,stdout=sys.stdout, stderr=sys.stderr, close_fds=False) \
                 .wait()
 
-if __name__ == '__main__':
+tuya = None
+
+def main():
     init('./')
     try:
+        global tuya
         tuya = TuyaNodeWrapper(message_received_callback=on_message_received)
         tuya.start()
         tuya.connect_device(sys.argv[1], sys.argv[2], sys.argv[3])
     except:
         tuya.disconnect()
+
+async def async_main():
+    main()
+    
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(async_main())
+    
