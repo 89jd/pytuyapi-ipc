@@ -56,7 +56,10 @@ class TuyaNodeWrapper:
         t = threading.Thread(target=asyncio.run, args=(self.read_loop(loop),))
 
         t.start()
-        Popen([get_js_executable_path(self.js_location), str('--fdr'), str(self.node_rc), str('--fdw'), str(self.py_wc)], \
+        node_cmd = [get_js_executable_path(self.js_location), str('--fdr'), str(self.node_rc), str('--fdw'), str(self.py_wc)]
+        if self.debug:
+            node_cmd.append('--verbose')
+        Popen(node_cmd, \
             stdout=sys.stdout, stderr=sys.stderr, close_fds=False)    
 
     def _send_message_to_tuya(self, t: str, data: str = None):

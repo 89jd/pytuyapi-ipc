@@ -6,7 +6,7 @@ def read(fname):
 
 setup(
     name='pytuyapi-ipc',
-    version='1.0.2',
+    version='1.0.3',
     packages=['tuyapipc'],
     description='Wrapper around node tuyapi',
     long_description=read('README.md'),
