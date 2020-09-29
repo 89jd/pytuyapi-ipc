@@ -16,12 +16,14 @@ def get_js_executable_path(location):
 class TuyaNodeWrapper:
     def __init__(self, js_location = './', message_received_callback = None, debug = False):
         self.js_location = js_location
+        self.message_received_callback = message_received_callback
+        self.debug = debug
+
+    def initialise_fds(self):
         self.node_rc, self.node_wc = os.pipe()
         self.py_rc, self.py_wc = os.pipe()
         self.wc_file = os.fdopen(self.node_wc, 'w')
         self.rc_file = os.fdopen(self.py_rc, 'r')
-        self.message_received_callback = message_received_callback
-        self.debug = debug
 
         os.set_inheritable(self.node_rc, True)
         os.set_inheritable(self.py_wc, True)
@@ -47,11 +49,14 @@ class TuyaNodeWrapper:
 
         if ob['type'] == 'disconnected': 
             self.rc_file.close()
+            self.wc_file.close()
             
         if self.message_received_callback:
             self.message_received_callback(json.loads(data))
 
     def start(self):
+        self.initialise_fds()
+
         loop = asyncio.get_event_loop()
         t = threading.Thread(target=asyncio.run, args=(self.read_loop(loop),))
 
@@ -59,8 +64,9 @@ class TuyaNodeWrapper:
         node_cmd = [get_js_executable_path(self.js_location), str('--fdr'), str(self.node_rc), str('--fdw'), str(self.py_wc)]
         if self.debug:
             node_cmd.append('--verbose')
+
         Popen(node_cmd, \
-            stdout=sys.stdout, stderr=sys.stderr, close_fds=False)    
+            stdout=sys.stdout, stderr=sys.stderr, close_fds=False)
 
     def _send_message_to_tuya(self, t: str, data: str = None):
         message = {
@@ -87,7 +93,13 @@ class TuyaNodeWrapper:
  
 
 def on_message_received(message):
-    if message['type'] == 'ready':
+    if message['type'] == 'disconnected':
+        tuya.start()
+        time.sleep(2)
+        tuya.connect_device(sys.argv[1], sys.argv[2], sys.argv[3])
+    elif message['type'] == 'ready':
+        tuya.set_dps(101, 'eyJpZCI6OTgzNiwibWV0aG9kIjoiZ2V0X3N0YXR1cyIsInBhcmFtcyI6W119')
+    elif message['type'] == 'response':
         tuya.disconnect()
 
 def init(location):
@@ -104,7 +116,8 @@ def main():
         tuya = TuyaNodeWrapper(message_received_callback=on_message_received, debug=True)
         tuya.start()
         tuya.connect_device(sys.argv[1], sys.argv[2], sys.argv[3])
-    except:
+    except Exception as e:
+        print(e)
         tuya.disconnect()
 
 async def async_main():
@@ -113,4 +126,3 @@ async def async_main():
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.run_until_complete(async_main())
-    
